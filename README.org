@@ -1,0 +1,38 @@
+* emacs-maple-diff
+  To sign the changes of file.
+
+** How to use
+   #+begin_src bash
+   git clone https://github.com/honmaple/emacs-maple-diff ~/.emacs.d/site-lisp/maple-diff
+   #+end_src
+
+   Or 
+   #+begin_src elisp
+     (use-package maple-diff
+       :quelpa (:fetcher github :repo "honmaple/emacs-maple-diff"))
+   #+end_src
+   
+   
+   #+begin_src elisp
+     (use-package maple-diff
+       :hook (after-init . global-maple-diff-mode)
+       :config
+       ;; left-fringe, right-fringe, left-margin, right-margin
+       (setq maple-diff:side 'right-fringe)
+
+       (setq maple-diff:margin-sign-alist
+             '((added . "+")
+               (deleted . "-")
+               (changed . "!")))
+
+       (setq maple-diff:fringe-sign-alist
+             '((added . maple-diff:added-fringe)
+               (deleted . maple-diff:deleted-fringe)
+               (changed . maple-diff:changed-fringe)))
+
+       (setq maple-diff:face-alist
+             '((added . maple-diff:added)
+               (deleted . maple-diff:deleted)
+               (changed . maple-diff:changed)))
+       )
+   #+end_src
