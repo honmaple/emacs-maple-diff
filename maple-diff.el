@@ -26,6 +26,7 @@
 ;;
 
 ;;; Code:
+(require 'vc)
 
 (defgroup maple-diff nil
   "Show diff sign on fringe or window margin."
@@ -42,7 +43,12 @@
   :type 'string
   :group 'maple-diff)
 
-(defcustom maple-diff:side 'right-fringe
+(defcustom maple-diff:delay 0.01
+  "The delay time to update diff sign."
+  :type 'float
+  :group 'maple-diff)
+
+(defcustom maple-diff:side (if (display-graphic-p) 'right-fringe 'left-margin)
   "The type of sign show."
   :type '(choice (const left-fringe)
                  (const right-fringe)
@@ -118,16 +124,15 @@
   "Get value of TYPE within ALIST."
   (cdr (or (assq type alist) (assq t alist))))
 
-(defun maple-diff:window-margin(side)
+(defun maple-diff:set-window-margin(side)
   "Set window margin width with SIDE."
-  (let* ((curwin (get-buffer-window))
-         (margin (window-margins curwin)))
-    (cond ((and (eq side 'left-margin) (not (car margin)))
-           (set-window-margins curwin 1)
-           (setq maple-diff:margins (cons (car margin) nil)))
-          ((and (eq side 'right-margin) (not (cdr margin)))
-           (set-window-margins curwin nil 1)
-           (setq maple-diff:margins (cons nil (cdr margin)))))))
+  (let ((margin (window-margins)))
+    (cond ((eq side 'left-margin)
+           (set-window-margins nil 1 (cdr margin))
+           (setq maple-diff:margins margin))
+          ((eq side 'right-margin)
+           (set-window-margins nil (car margin) 1)
+           (setq maple-diff:margins margin)))))
 
 (defun maple-diff:before-string(type side)
   "Get before string with TYPE SIDE &OPTIONAL FACE."
@@ -137,7 +142,6 @@
     (cond ((memq side '(left-fringe right-fringe))
            (propertize " " 'display `(,side ,fringe-sign . ,(when face (cons face nil)))))
           ((memq side '(left-margin right-margin))
-           (maple-diff:window-margin side)
            (propertize " " 'display `((margin ,side) ,(propertize margin-sign 'face face)))))))
 
 (defun maple-diff:show-sign(beg end type side)
@@ -170,11 +174,10 @@
 
 (defun maple-diff:changes()
   "Get all diff change."
-  (let* ((file buffer-file-name)
-         (buffer maple-diff:buffer)
+  (let* ((file (buffer-file-name))
          (backend (vc-backend file))
          (diffout (maple-diff:alist backend maple-diff:output-alist))
-         results)
+         (buffer maple-diff:buffer) results)
     (when backend
       (if diffout (funcall diffout (list file) buffer)
         (maple-diff:switches
@@ -198,6 +201,26 @@
              results))))
       (reverse results))))
 
+(defun maple-diff:next-sign(arg)
+  "Goto next sign if ARG."
+  (interactive "p")
+  (unless maple-diff:overlays
+    (error "There are no changes!"))
+  (let* ((pre    (< arg 0))
+         (point    (point))
+         (overlays (if pre (reverse maple-diff:overlays) maple-diff:overlays)))
+    (goto-char
+     (or (cl-loop for overlay in overlays
+                  when (if pre (< (overlay-end overlay) point)
+                         (> (overlay-start overlay) point))
+                  return (overlay-start overlay))
+         (overlay-start (car overlays))))))
+
+(defun maple-diff:previous-sign(arg)
+  "Goto previous sign if not ARG."
+  (interactive "p")
+  (maple-diff:next-sign (- arg)))
+
 (defun maple-diff:hide()
   "Hide diff sign on fringe or margin."
   (mapc (lambda(overlay)
@@ -206,9 +229,6 @@
                    do (delete-overlay ov))
           (delete-overlay overlay))
         maple-diff:overlays)
-  (when maple-diff:margins
-    (set-window-margins (get-buffer-window) (car maple-diff:margins) (cdr maple-diff:margins))
-    (setq maple-diff:margins nil))
   (setq maple-diff:overlays nil))
 
 (defun maple-diff:show()
@@ -226,13 +246,26 @@
                         (goto-char (point-min))
                         (forward-line (1- end))
                         (point))))
-             (maple-diff:show-sign bep enp type maple-diff:side))))))
+             (maple-diff:show-sign bep enp type maple-diff:side))))
+    (maple-diff:set-window-margin maple-diff:side)))
+
+;;;###autoload
+(define-minor-mode maple-diff-mode
+  "Git-Gutter mode"
+  :group  'maple-diff
+  (if maple-diff-mode (maple-diff-mode-on) (maple-diff-mode-off)))
+
+;;;###autoload
+(define-global-minor-mode global-maple-diff-mode maple-diff-mode
+  (lambda() (when (buffer-file-name) (maple-diff-mode 1))))
 
 (defun maple-diff:update()
   "Update diff sign."
   (interactive)
-  (maple-diff:hide)
-  (maple-diff:show))
+  (when maple-diff-mode
+    (run-with-idle-timer
+     maple-diff:delay nil
+     (lambda() (maple-diff:hide) (maple-diff:show)))))
 
 (defun maple-diff-mode-on ()
   "Toggle on `maple-diff-mode`."
@@ -246,17 +279,10 @@
   (interactive)
   (maple-diff:hide)
   (dolist (hook maple-diff:change-hooks)
-    (remove-hook hook 'maple-diff:update t)))
-
-;;;###autoload
-(define-minor-mode maple-diff-mode
-  "Git-Gutter mode"
-  :group  'maple-diff
-  (if maple-diff-mode (maple-diff-mode-on) (maple-diff-mode-off)))
-
-;;;###autoload
-(define-global-minor-mode global-maple-diff-mode maple-diff-mode
-  (lambda() (when (buffer-file-name) (maple-diff-mode 1))))
+    (remove-hook hook 'maple-diff:update t))
+  (when maple-diff:margins
+    (set-window-margins (get-buffer-window) (car maple-diff:margins) (cdr maple-diff:margins))
+    (setq maple-diff:margins nil)))
 
 (provide 'maple-diff)
 ;;; maple-diff.el ends here
