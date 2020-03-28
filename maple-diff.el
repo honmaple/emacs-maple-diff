@@ -224,9 +224,10 @@
 (defun maple-diff:hide()
   "Hide diff sign on fringe or margin."
   (mapc (lambda(overlay)
-          (cl-loop for ov in (overlays-in (overlay-start overlay) (1+ (overlay-end overlay)))
-                   when (overlay-get ov 'maple-diff)
-                   do (delete-overlay ov))
+          (when (overlayp overlay)
+            (cl-loop for ov in (overlays-in (overlay-start overlay) (1+ (overlay-end overlay)))
+                     when (overlay-get ov 'maple-diff)
+                     do (delete-overlay ov)))
           (delete-overlay overlay))
         maple-diff:overlays)
   (setq maple-diff:overlays nil))
