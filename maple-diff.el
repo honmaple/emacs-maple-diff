@@ -62,6 +62,11 @@
   :type 'list
   :group 'maple-diff)
 
+(defcustom maple-diff:ignore-alist nil
+  "The buffer name or regexp that be ignored."
+  :type 'list
+  :group 'maple-diff)
+
 (defcustom maple-diff:output-alist
   '((Git . maple-diff:git-output))
   "The diff function."
@@ -123,6 +128,16 @@
 (defun maple-diff:alist (type alist)
   "Get value of TYPE within ALIST."
   (cdr (or (assq type alist) (assq t alist))))
+
+(defun maple-diff:ignore (&optional buffer vc)
+  "Ignore BUFFER VC."
+  (let ((name (buffer-file-name (or buffer (current-buffer)))))
+    (or (not name)
+        (cl-loop
+         for r in maple-diff:ignore-alist
+         when (and (stringp r) (string-match r name))
+         return t)
+        (and vc (not vc-mode) (not (vc-state name))))))
 
 (defun maple-diff:set-window-margin(side)
   "Set window margin width with SIDE."
@@ -224,17 +239,19 @@
 (defun maple-diff:hide()
   "Hide diff sign on fringe or margin."
   (mapc (lambda(overlay)
-          (when (overlayp overlay)
-            (cl-loop for ov in (overlays-in (overlay-start overlay) (1+ (overlay-end overlay)))
-                     when (overlay-get ov 'maple-diff)
-                     do (delete-overlay ov)))
-          (delete-overlay overlay))
+          (let ((beg (overlay-start overlay))
+                (end (overlay-end overlay)))
+            (when (and beg end)
+              (cl-loop for ov in (overlays-in beg (1+ end))
+                       when (overlay-get ov 'maple-diff)
+                       do (delete-overlay ov)))
+            (delete-overlay overlay)))
         maple-diff:overlays)
   (setq maple-diff:overlays nil))
 
 (defun maple-diff:show()
   "Show diff sign on fringe or margin."
-  (when (and vc-mode (vc-state (buffer-file-name)))
+  (unless (maple-diff:ignore nil t)
     (setq maple-diff:overlays
           (cl-loop
            for ((beg . end) . type) in (maple-diff:changes)
@@ -258,7 +275,7 @@
 
 ;;;###autoload
 (define-global-minor-mode global-maple-diff-mode maple-diff-mode
-  (lambda() (when (buffer-file-name) (maple-diff-mode 1))))
+  (lambda() (unless (maple-diff:ignore) (maple-diff-mode 1))))
 
 (defun maple-diff:update()
   "Update diff sign."
