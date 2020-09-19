@@ -269,7 +269,7 @@
 
 ;;;###autoload
 (define-minor-mode maple-diff-mode
-  "Git-Gutter mode"
+  "Show diff with HEAD."
   :group  'maple-diff
   (if maple-diff-mode (maple-diff-mode-on) (maple-diff-mode-off)))
 
