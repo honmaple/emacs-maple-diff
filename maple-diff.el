@@ -1,6 +1,6 @@
 ;;; maple-diff.el ---  show diff sign on fringe or margin.	-*- lexical-binding: t -*-
 
-;; Copyright (C) 2020 lin.jiang
+;; Copyright (C) 2020, 2021 lin.jiang
 
 ;; Author: lin.jiang <mail@honmaple.com>
 ;; Version: 0.1.0
@@ -116,14 +116,15 @@
 
 (defvar-local maple-diff:margins nil)
 
-(define-fringe-bitmap 'maple-diff:added-fringe
-  [24 24 24 255 255 24 24 24])
+(when (display-graphic-p)
+  (define-fringe-bitmap 'maple-diff:added-fringe
+    [24 24 24 255 255 24 24 24])
 
-(define-fringe-bitmap 'maple-diff:deleted-fringe
-  [0 0 0 255 255 0 0 0])
+  (define-fringe-bitmap 'maple-diff:deleted-fringe
+    [0 0 0 255 255 0 0 0])
 
-(define-fringe-bitmap 'maple-diff:changed-fringe
-  [24] nil nil '(center repeated))
+  (define-fringe-bitmap 'maple-diff:changed-fringe
+    [24] nil nil '(center repeated)))
 
 (defun maple-diff:alist (type alist)
   "Get value of TYPE within ALIST."
