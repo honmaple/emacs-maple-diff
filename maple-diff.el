@@ -1,6 +1,6 @@
 ;;; maple-diff.el ---  show diff sign on fringe or margin.	-*- lexical-binding: t -*-
 
-;; Copyright (C) 2020, 2021 lin.jiang
+;; Copyright (C) 2020-2022 lin.jiang
 
 ;; Author: lin.jiang <mail@honmaple.com>
 ;; Version: 0.1.0
@@ -27,6 +27,13 @@
 
 ;;; Code:
 (require 'vc)
+
+(defvar vc-git-diff-switches)
+(defvar vc-hg-diff-switches)
+(defvar vc-svn-diff-switches)
+(defvar vc-diff-switches)
+
+(declare-function vc-git-command 'vc-git)
 
 (defgroup maple-diff nil
   "Show diff sign on fringe or window margin."
@@ -99,17 +106,17 @@
 
 (defface maple-diff:added
   '((t (:foreground "#A6E22E" :weight bold :inherit default)))
-  "Face of added"
+  "Face of added."
   :group 'maple-diff)
 
 (defface maple-diff:deleted
   '((t (:foreground "#F92672" :weight bold :inherit default)))
-  "Face of deleted"
+  "Face of deleted."
   :group 'maple-diff)
 
 (defface maple-diff:changed
   '((t (:foreground "#66D9EF" :weight bold :inherit default)))
-  "Face of changed"
+  "Face of changed."
   :group 'maple-diff)
 
 (defvar-local maple-diff:overlays nil)
